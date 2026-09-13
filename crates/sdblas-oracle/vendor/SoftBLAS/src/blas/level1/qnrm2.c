@@ -1,0 +1,47 @@
+#include "softblas.h"
+
+float128_t qnrm2(uint64_t N, const float128_t *X, uint64_t incX, const uint_fast8_t rndMode) {
+    _set_rounding(rndMode);
+    float128_t norm = { SB_REAL128L_ZERO, SB_REAL128U_ZERO };
+    
+    if (N < 1 || incX < 1 || SB_STRIDE_OVERFLOWS(N, incX)) {
+        nan_unify_q(&norm);
+        return norm;
+    } else if (N == 1) {
+        norm = f128_abs(X[0]);
+        nan_unify_q(&norm);
+        return norm;
+    } else {
+        float128_t scale = { SB_REAL128L_ZERO, SB_REAL128U_ZERO };
+        float128_t ssq = { SB_REAL128L_ONE, SB_REAL128U_ONE };
+        float128_t absXI;
+        float128_t QT, QU, QV, QW, QX, QY;
+        const float128_t QZERO = { SB_REAL128L_ZERO, SB_REAL128U_ZERO };
+        const float128_t QONE  = { SB_REAL128L_ONE,  SB_REAL128U_ONE };
+
+        for (uint64_t k = 0, ix = 0; k < N; k++, ix += incX) {
+            if (f128M_ne(&(X[ix]), &QZERO)) {
+                absXI = f128_abs(X[ix]);
+                if (f128M_lt(&scale, &absXI)) {
+                    f128M_mul(&absXI, &absXI, &QT);
+                    f128M_mul(&scale, &scale, &QU);
+                    f128M_div(&QU, &QT, &QW);
+                    f128M_mul(&ssq, &QW, &QX);
+                    f128M_add(&QONE, &QX, &ssq);
+                    scale = absXI;
+                } else {
+                    f128M_mul(&absXI, &absXI, &QT);
+                    f128M_mul(&scale, &scale, &QU);
+                    f128M_div(&QT, &QU, &QW);
+                    f128M_add(&ssq, &QW, &ssq);
+                }
+            }
+        }
+
+        f128M_sqrt(&ssq, &QY);
+        f128M_mul(&scale, &QY, &norm);
+
+        nan_unify_q(&norm);
+        return norm;
+    }
+}

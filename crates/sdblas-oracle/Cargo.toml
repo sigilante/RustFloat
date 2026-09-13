@@ -1,0 +1,13 @@
+[package]
+name = "sdblas-oracle"
+version = "0.1.0"
+edition.workspace = true
+license = "MIT"
+description = "Test-only FFI to SoftBLAS (vendored C, on vendored SoftFloat 3e); the oracle the sdblas crate is checked against. Never a runtime dependency."
+publish = false
+
+[lib]
+doctest = false
+
+[build-dependencies]
+cc = "1"

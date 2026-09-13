@@ -1,9 +1,11 @@
 # RustFloat
 
-Pure-Rust IEEE 754 software floating point with explicit rounding modes,
-bit-identical to Berkeley SoftFloat 3e. Built for NockApp jets of the
+Pure-Rust IEEE 754 software floating point and BLAS with explicit rounding
+modes, bit-identical to Berkeley SoftFloat 3e and to
+[SoftBLAS](https://github.com/urbit/SoftBLAS). Built for NockApp jets of the
 [urbit/numerics](https://github.com/urbit/numerics) suite, where a jet must
-return exactly the bits the Hoon `++rh`/`++rs`/`++rd`/`++rq` cores return.
+return exactly the bits the Hoon `++rh`/`++rs`/`++rd`/`++rq` cores and
+`/lib/lagoon` return.
 
 The `sdfloat` crate is `#![no_std]`, `#![forbid(unsafe_code)]`, has no
 dependencies, allocates nothing, holds no global state, and uses no hardware
@@ -14,11 +16,16 @@ inexact operation. Specification: [`doc/nockapp-softfloat-rs-spec.md`](doc/nocka
 
 | Crate | Purpose |
 |---|---|
-| `crates/sdfloat/` | The library: `F16`, `F32`, `F64`, `F128`, the `SoftFloat` trait, `Round`. |
-| `crates/sdfloat-oracle/` | Test-only FFI to vendored SoftFloat 3e C (ARM-VFPv2 specialization, as vere links). Never a runtime dependency. |
+| `crates/sdfloat/` | Scalar library: `F16`, `F32`, `F64`, `F128`, the `SoftFloat` trait, `Round`. |
+| `crates/sdblas/` | BLAS Levels 1 to 3 over `sdfloat`, real and complex, all four widths; the SoftBLAS port. |
+| `crates/sdblas-cabi/` | The SoftBLAS C ABI over `sdblas` as a static library: a drop-in `libsoftblas.a`, and how SoftBLAS's own test suite runs against the Rust. |
+| `crates/sdfloat-oracle/` | Test-only FFI to vendored SoftFloat 3e C (ARM-VFPv2 specialization, as vere links). |
+| `crates/sdblas-oracle/` | Test-only FFI to vendored SoftBLAS C, plus its munit test suite. |
 
-Inside `crates/sdfloat/src`, `pack.rs` is the single rounding point; each file in
-`ops/` is one operation and names the SoftFloat source it replaces.
+The oracle crates are dev-dependencies only; nothing ships with C. Inside
+`crates/sdfloat/src`, `pack.rs` is the single rounding point and each file in
+`ops/` is one operation named after the SoftFloat source it replaces. In
+`crates/sdblas/src`, each routine's doc names the SoftBLAS source it reproduces.
 
 ## Use
 
@@ -32,6 +39,22 @@ assert_eq!(a.add(b, Round::Away), F32(0x3f80_0001));
 assert_eq!(F32::MAX.mul(F32(0x4000_0000), Round::Zero), F32::MAX); // saturates
 assert_eq!(F32::MAX.mul(F32(0x4000_0000), Round::Up), F32::INF);
 ```
+
+BLAS routines are generic over the width and take the mode last, where
+SoftBLAS takes `rndMode`:
+
+```rust
+use sdblas::{Round, Trans, F64};
+let (a, b) = ([F64::ONE, F64::ONE], [F64::ONE, F64::ONE]);
+let mut c = [F64::ZERO; 4];
+sdblas::gemm(Trans::NoTrans, Trans::NoTrans, 2, 1, 2, F64::ONE, &a, 1, &b, 2, F64::ZERO, &mut c, 2, Round::NearEven);
+```
+
+Real routines: `asum axpy copy dot nrm2 nrm2_b rot rotg rotm rotmg scal swap
+iamax sdsdot hsdot gemv gemm`; `sdblas::complex` has `axpy copy dotc dotu scal
+swap rot asum nrm2 iamax gemv gemm` over `Complex<F>`. Strides, argument
+validation, accumulation order and NaN handling follow SoftBLAS exactly; the
+crate docs list the conventions.
 
 `Round` has Hoon's five modes: `NearEven` (`%n`), `Up` (`%u`), `Down` (`%d`),
 `Zero` (`%z`), `Away` (`%a`, directed away from zero). Operations: `add sub
@@ -55,13 +78,15 @@ from_u64 is_nan is_inf is_zero abs neg`, plus width conversions
 ## Testing
 
 ```sh
-cargo test --workspace                         # oracle fuzz, semantics, exhaustive f16 unary
+cargo test --workspace                         # oracle fuzz, Hoon vectors, semantics, exhaustive f16 unary
 SOFTFLOAT_ORACLE_N=2000000 cargo test --release -p sdfloat --test oracle
+SDBLAS_ORACLE_N=40000 cargo test --release -p sdblas --test oracle
 cargo test --release -p sdfloat --test exhaustive_f16 -- --ignored   # all 2^32 f16 pairs
+scripts/run-softblas-munit.sh                  # SoftBLAS's 313 munit tests against the Rust port
 scripts/no-hardware-floats.sh
 ```
 
-Three layers, all run by `cargo test --workspace`:
+For `sdfloat`, three layers, all run by `cargo test --workspace`:
 
 1. **Oracle fuzz** (`tests/oracle.rs`): raw bits against SoftFloat for every
    op, width and mode on structured samples (zeros, subnormals, exponent
@@ -77,8 +102,16 @@ Three layers, all run by `cargo test --workspace`:
    shape; everything else must match bit for bit.
 3. **Hand-checked semantics** (`tests/semantics.rs`): the conventions above.
 
+For `sdblas`: a differential fuzz of every routine, width, stride pattern,
+layout and transpose against SoftBLAS C (`crates/sdblas/tests/oracle.rs`,
+four modes; SoftBLAS's `'a'` is nearest-ties-away, not Hoon's `%a`), the
+complete SoftBLAS munit suite run unchanged through the C ABI (313 tests),
+and hand-checked semantics. Two SoftBLAS quirks are documented rather than
+copied: `rotg`/`rotmg` return raw NaN payloads there (this crate canonicalizes),
+and `rotmg` loops forever on a negative `d1` there (this crate returns).
+
 ## Status
 
-Phases 0–3 of the spec (all four widths, all operations) are implemented and
-green against the oracle. `softblas` and `lagoon-jets` (phases 4–5) live in
-urbit/numerics under `lagoon/nockapp/`, not here.
+Phases 0–4 of the spec: `sdfloat` (all four widths, all operations) and
+`sdblas` (all of SoftBLAS) are implemented and green against their oracles.
+`lagoon-jets` (phase 5) lives in urbit/numerics under `lagoon/nockapp/`.

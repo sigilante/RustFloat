@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/sdfloat", "crates/sdfloat-oracle"]
+members = ["crates/sdfloat", "crates/sdfloat-oracle", "crates/sdblas", "crates/sdblas-oracle", "crates/sdblas-cabi"]
 
 [workspace.package]
 edition = "2021"

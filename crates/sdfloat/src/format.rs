@@ -28,6 +28,8 @@ pub trait Format: Copy + Eq {
     const INF_VALUE: Self;
     /// `+0` as a value.
     const ZERO_VALUE: Self;
+    /// `1.0` as a value.
+    const ONE_VALUE: Self;
     /// `MAX_BITS` as a value.
     const MAX_VALUE: Self;
     /// Zero-extend raw bits to the common `u128` carrier.
@@ -60,6 +62,8 @@ pub trait Format: Copy + Eq {
     const NAN_BITS: u128 = Self::EXP_MASK | (1 << (Self::FRAC_BITS - 1));
     /// Positive infinity.
     const INF_BITS: u128 = Self::EXP_MASK;
+    /// `1.0`: biased exponent `BIAS`, zero fraction.
+    const ONE_BITS: u128 = (Self::BIAS as u128) << Self::FRAC_BITS;
     /// Largest finite magnitude.
     const MAX_BITS: u128 = Self::EXP_MASK - 1;
 

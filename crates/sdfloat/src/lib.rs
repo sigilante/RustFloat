@@ -57,6 +57,8 @@ pub trait SoftFloat: Copy + Eq {
     const INF: Self;
     /// Positive zero.
     const ZERO: Self;
+    /// One.
+    const ONE: Self;
     /// Largest finite value.
     const MAX: Self;
 
@@ -117,6 +119,7 @@ impl<F: Format> SoftFloat for F {
     const NAN: Self = F::NAN_VALUE;
     const INF: Self = F::INF_VALUE;
     const ZERO: Self = F::ZERO_VALUE;
+    const ONE: Self = F::ONE_VALUE;
     const MAX: Self = F::MAX_VALUE;
 
     #[inline]

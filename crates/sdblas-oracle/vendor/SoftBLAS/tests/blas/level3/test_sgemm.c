@@ -1,0 +1,294 @@
+#include "test.h"
+#include <stdio.h>
+
+MunitResult test_sgemm_0_row(const MunitParameter params[],
+                             void *user_data) {
+    const char transA = 'N';   // No transpose
+    const char transB = 'N';   // No transpose
+    const float32_t alpha = { SB_REAL32_ONE };  // Scalar alpha
+    const float32_t beta = { SB_REAL32_ZERO };  // Scalar beta
+
+    const uint64_t M = 2;     // Number of rows in A
+    const uint64_t N = 2;     // Number of columns in A
+    const uint64_t P = 2;     // Number of columns in B
+
+    // 2x2 matrix A (row-major order)
+    //   [1.0 2.0]
+    //   [3.0 4.0]
+    float32_t* A = svec((float[]){1.0f, 2.0f, 3.0f, 4.0f}, M*N);
+
+    // 2x2 matrix B (row-major order)
+    //   [5.0 6.0]
+    //   [7.0 8.0]
+    float32_t* B = svec((float[]){5.0f, 6.0f, 7.0f, 8.0f}, N*P);
+
+    // 2x2 matrix C (row-major order)
+    //   [0.0 0.0]
+    //   [0.0 0.0]
+    float32_t* C = svec((float[]){0.0f, 0.0f, 0.0f, 0.0f}, M*P);
+
+    // Leading dimensions
+    const uint64_t lda = N;
+    const uint64_t ldb = P;
+    const uint64_t ldc = P;
+
+    // Call sgemm
+    sgemm(transA, transB, M, N, P, alpha, A, lda, B, ldb, beta, C, ldc, 'n');
+
+    float32_t* R = svec((float[]){19.0f, 22.0f, 43.0f, 50.0f}, M*P);
+
+    for (uint64_t i = 0; i < 4; i++) {
+        assert_ulong(C[i].v, ==, R[i].v);
+    }
+
+    free(A);
+    free(B);
+    free(C);
+    free(R);
+
+    return MUNIT_OK;
+}
+
+MunitResult test_sgemm_0_col(const MunitParameter params[],
+                             void *user_data) {
+    const char transA = 'T';  // Transpose
+    const char transB = 'T';  // Transpose
+    const float32_t alpha = { SB_REAL32_ONE };  // Scalar alpha
+    const float32_t beta = { SB_REAL32_ZERO };  // Scalar beta
+
+    const uint64_t M = 2;     // Number of rows in A
+    const uint64_t N = 2;     // Number of columns in A
+    const uint64_t P = 2;     // Number of columns in B
+
+    // 2x2 matrix A (row-major order)
+    //   [1.0 2.0]
+    //   [3.0 4.0]
+    float32_t* A = svec((float[]){1.0f, 3.0f, 2.0f, 4.0f}, M*N);
+
+    // 2x2 matrix B (row-major order)
+    //   [5.0 6.0]
+    //   [7.0 8.0]
+    float32_t* B = svec((float[]){5.0f, 7.0f, 6.0f, 8.0f}, N*P);
+
+    // 2x2 matrix C (row-major order)
+    //   [0.0 0.0]
+    //   [0.0 0.0]
+    float32_t* C = svec((float[]){0.0f, 0.0f, 0.0f, 0.0f}, M*P);
+
+    // Leading dimensions
+    const uint64_t lda = N;
+    const uint64_t ldb = P;
+    const uint64_t ldc = P;
+
+    // Call sgemm
+    sgemm(transA, transB, M, N, P, alpha, A, lda, B, ldb, beta, C, ldc, 'n');
+
+    float32_t* R = svec((float[]){19.0f, 22.0f, 43.0f, 50.0f}, M*P);
+
+    for (uint64_t i = 0; i < 4; i++) {
+        assert_ulong(C[i].v, ==, R[i].v);
+    }
+
+    free(A);
+    free(B);
+    free(C);
+    free(R);
+
+    return MUNIT_OK;
+}
+
+MunitResult test_sgemm_3x2x1_0(const MunitParameter params[],
+                             void *user_data) {
+    const char transA = 'N';  // No transpose
+    const char transB = 'N';  // No transpose
+    const float32_t alpha = {*(uint32_t*)&(float){1.0f}};
+    const float32_t beta = {*(uint32_t*)&(float){0.0f}};
+
+    const uint64_t M = 3;     // Number of rows in A
+    const uint64_t N = 2;     // Number of columns in A
+    const uint64_t P = 1;     // Number of columns in B
+
+    // 3x2 matrix A (row-major order)
+    float32_t* A = svec((float[]){ 1.0f,  2.0f,
+                                   3.0f,  4.0f,
+                                   5.0f,  6.0f},
+                        M*N);
+
+    // 2x1 matrix B (row-major order)
+    float32_t* B = svec((float[]){ 1.0f,
+                                   2.0f},
+                        N*P);
+
+    // 3x1 matrix C (row-major order)
+    float32_t* C = svec((float[]){ 0.0f,
+                                   0.0f,
+                                   0.0f},
+                        M*P);
+
+    // Leading dimensions
+    const uint64_t lda = N;
+    const uint64_t ldb = P;
+    const uint64_t ldc = P;
+
+    // Call sgemm
+    sgemm(transA, transB, M, N, P, alpha, A, lda, B, ldb, beta, C, ldc, 'n');
+
+    float32_t* R = svec((float[]){ 5.0f,
+                                   11.0f,
+                                   17.0f},
+                        M*P);
+
+    for (uint64_t i = 0; i < 3; i++) {
+        assert_ulong(C[i].v, ==, R[i].v);
+    }
+
+    free(A);
+    free(B);
+    free(C);
+    free(R);
+
+    return MUNIT_OK;
+}
+
+MunitResult test_sgemm_5x4x3(const MunitParameter params[],
+                             void *user_data) {
+    const char transA = 'N';  // No transpose
+    const char transB = 'N';  // No transpose
+    const float32_t alpha = {*(uint32_t*)&(float){2.5f}};
+    const float32_t beta = {*(uint32_t*)&(float){-1.0f}};
+
+    const uint64_t M = 5;     // Number of rows in A
+    const uint64_t N = 4;     // Number of columns in A
+    const uint64_t P = 3;     // Number of columns in B
+
+    // 5x4 matrix A (row-major order)
+    float32_t* A = svec((float[]){ 2.0f, -1.0f,  3.0f,  0.0f,
+                                   4.0f,  1.0f,  0.0f,  2.0f,
+                                  -1.0f,  3.0f,  4.0f,  5.0f,
+                                   1.0f,  2.0f,  0.0f,  3.0f,
+                                   2.0f,  4.0f,  2.0f,  5.0f},
+                        M*N);
+
+    // 4x3 matrix B (row-major order)
+    float32_t* B = svec((float[]){ 6.0f, -2.0f,  8.0f,
+                                   4.0f,  1.0f,  7.0f,
+                                  -1.0f,  2.0f,  4.0f,
+                                   5.0f,  4.0f,  2.0f},
+                        N*P);
+
+    // 2x2 matrix C (row-major order)
+    float32_t* C = svec((float[]){ 1.0f,  2.0f,  3.0f,
+                                   4.0f,  5.0f,  6.0f,
+                                  -1.0f, -2.0f, -3.0f,
+                                  -4.0f, -5.0f, -6.0f,
+                                  -2.0f, -3.0f, -4.0f},
+                        M*P);
+
+    // Leading dimensions
+    const uint64_t lda = N;
+    const uint64_t ldb = P;
+    const uint64_t ldc = P;
+
+    // Call sgemm
+    sgemm(transA, transB, M, N, P, alpha, A, lda, B, ldb, beta, C, ldc, 'n');
+
+    float32_t* R = svec((float[]){11.5f,  0.5f,  49.5f,
+                                  91.0f, -2.5f, 101.5f,
+                                  68.5f, 84.5f, 100.5f,
+                                  76.5f, 35.0f,  76.0f,
+                                 129.5f, 63.0f, 159.0f},
+                        M*P);
+
+    for (uint64_t i = 0; i < M*P; i++) {
+        assert_ulong(C[i].v, ==, R[i].v);
+    }
+
+    free(A);
+    free(B);
+    free(C);
+    free(R);
+
+    return MUNIT_OK;
+}
+
+//  Regression for the ldb/ldc bug: B is stored with padding so ldb != ldc.
+//  Under the old code (which indexed B with ldc) this produced wrong results.
+MunitResult test_sgemm_ldb(const MunitParameter params[],
+                           void *user_data) {
+    const char transA = 'N';
+    const char transB = 'N';
+    const float32_t alpha = { SB_REAL32_ONE };
+    const float32_t beta = { SB_REAL32_ZERO };
+
+    const uint64_t M = 2;
+    const uint64_t N = 2;
+    const uint64_t P = 2;
+
+    // 2x2 A: [1 2; 3 4]
+    float32_t* A = svec((float[]){1.0f, 2.0f, 3.0f, 4.0f}, M*N);
+
+    // Logical 2x2 B = [5 6; 7 8], but stored with a padding column (ldb = 3).
+    float32_t* B = svec((float[]){5.0f, 6.0f, 99.0f,
+                                  7.0f, 8.0f, 99.0f}, N*3);
+
+    float32_t* C = svec((float[]){0.0f, 0.0f, 0.0f, 0.0f}, M*P);
+
+    const uint64_t lda = N;   // 2
+    const uint64_t ldb = 3;   // padded, deliberately != ldc
+    const uint64_t ldc = P;   // 2
+
+    sgemm(transA, transB, M, N, P, alpha, A, lda, B, ldb, beta, C, ldc, 'n');
+
+    float32_t* R = svec((float[]){19.0f, 22.0f, 43.0f, 50.0f}, M*P);
+
+    for (uint64_t i = 0; i < 4; i++) {
+        assert_ulong(C[i].v, ==, R[i].v);
+    }
+
+    free(A); free(B); free(C); free(R);
+    return MUNIT_OK;
+}
+
+//  Mixed transpose A^T * B (transA='T', transB='N'). A stored [[1,3],[2,4]] so
+//  A^T=[[1,2],[3,4]]; B=[[5,6],[7,8]] -> C=[[19,22],[43,50]]. Only 'T','T' and
+//  'N','N' were covered before.
+MunitResult test_sgemm_transA(const MunitParameter params[], void *user_data) {
+    const float32_t alpha = { SB_REAL32_ONE }, beta = { SB_REAL32_ZERO };
+    float32_t* A = svec((float[]){1.0f,3.0f,2.0f,4.0f}, 4);
+    float32_t* B = svec((float[]){5.0f,6.0f,7.0f,8.0f}, 4);
+    float32_t* C = svec((float[]){0.0f,0.0f,0.0f,0.0f}, 4);
+    sgemm('T', 'N', 2, 2, 2, alpha, A, 2, B, 2, beta, C, 2, 'n');
+    float32_t* R = svec((float[]){19.0f,22.0f,43.0f,50.0f}, 4);
+    for (uint64_t i = 0; i < 4; i++) assert_ulong(C[i].v, ==, R[i].v);
+    free(A); free(B); free(C); free(R);
+    return MUNIT_OK;
+}
+
+//  Mixed transpose A * B^T (transA='N', transB='T'). A=[[1,2],[3,4]]; B stored
+//  [[5,7],[6,8]] so B^T=[[5,6],[7,8]] -> C=[[19,22],[43,50]].
+MunitResult test_sgemm_transB(const MunitParameter params[], void *user_data) {
+    const float32_t alpha = { SB_REAL32_ONE }, beta = { SB_REAL32_ZERO };
+    float32_t* A = svec((float[]){1.0f,2.0f,3.0f,4.0f}, 4);
+    float32_t* B = svec((float[]){5.0f,7.0f,6.0f,8.0f}, 4);
+    float32_t* C = svec((float[]){0.0f,0.0f,0.0f,0.0f}, 4);
+    sgemm('N', 'T', 2, 2, 2, alpha, A, 2, B, 2, beta, C, 2, 'n');
+    float32_t* R = svec((float[]){19.0f,22.0f,43.0f,50.0f}, 4);
+    for (uint64_t i = 0; i < 4; i++) assert_ulong(C[i].v, ==, R[i].v);
+    free(A); free(B); free(C); free(R);
+    return MUNIT_OK;
+}
+
+//  C4: the TT combo completes single-precision gemm's {N,T}^2 (NN=basic,
+//  NT=transB, TN=transA, TT=here). A stored as op(A)^T=[[1,3],[2,4]] and B as
+//  op(B)^T=[[5,7],[6,8]] so op(A)*op(B) = [[1,2],[3,4]]*[[5,6],[7,8]].
+MunitResult test_sgemm_transAB(const MunitParameter params[], void *user_data) {
+    const float32_t alpha = { SB_REAL32_ONE }, beta = { SB_REAL32_ZERO };
+    float32_t* A = svec((float[]){1.0f,3.0f,2.0f,4.0f}, 4);
+    float32_t* B = svec((float[]){5.0f,7.0f,6.0f,8.0f}, 4);
+    float32_t* C = svec((float[]){0.0f,0.0f,0.0f,0.0f}, 4);
+    sgemm('T', 'T', 2, 2, 2, alpha, A, 2, B, 2, beta, C, 2, 'n');
+    float32_t* R = svec((float[]){19.0f,22.0f,43.0f,50.0f}, 4);
+    for (uint64_t i = 0; i < 4; i++) assert_ulong(C[i].v, ==, R[i].v);
+    free(A); free(B); free(C); free(R);
+    return MUNIT_OK;
+}

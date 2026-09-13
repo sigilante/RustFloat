@@ -18,6 +18,7 @@ macro_rules! define_format {
             const NAN_VALUE: Self = $name(<Self as Format>::NAN_BITS as $bits);
             const INF_VALUE: Self = $name(<Self as Format>::INF_BITS as $bits);
             const ZERO_VALUE: Self = $name(0);
+            const ONE_VALUE: Self = $name(<Self as Format>::ONE_BITS as $bits);
             const MAX_VALUE: Self = $name(<Self as Format>::MAX_BITS as $bits);
             #[inline] fn from_bits(b: $bits) -> Self { $name(b) }
             #[inline] fn to_bits(self) -> $bits { self.0 }

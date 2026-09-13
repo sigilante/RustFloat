@@ -22,7 +22,16 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: SOFTFLOAT_ORACLE_N=200000 cargo test --release -p sdfloat --test oracle
+      - run: SDBLAS_ORACLE_N=20000 cargo test --release -p sdblas --test oracle
       - run: scripts/no-hardware-floats.sh
+
+  # SoftBLAS's own munit suite, unmodified, linked against the Rust port.
+  softblas-munit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - run: scripts/run-softblas-munit.sh
 
   # The library must build with no std, no alloc, no dependencies.
   no-std:
@@ -32,7 +41,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv7em-none-eabihf
-      - run: cargo build -p sdfloat --target thumbv7em-none-eabihf
+      - run: cargo build -p sdfloat -p sdblas --target thumbv7em-none-eabihf
 
   # All 2^32 binary16 operand pairs x 5 modes for add/sub/mul/div against
   # the oracle. Nightly or on demand; too slow for every push.
