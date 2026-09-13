@@ -2,11 +2,25 @@
 //!
 //! Conventions: `sig` carries the significand with three extra low bits
 //! (guard, round, sticky). A value is `sig * 2^(e - (PREC + 2))`, so a
-//! normalized `sig` has its MSB at bit `PREC + 2`. Three guard bits with a
-//! sticky are sufficient for correct rounding of every operation here,
-//! provided the sticky bit reflects all discarded nonzero bits (which
-//! `Wide::shr_jam` guarantees) and cancellation removes at most one leading
-//! bit when any bits were discarded (true for add/sub with exponent gap >= 2).
+//! normalized `sig` has its MSB at bit `PREC + 2`.
+//!
+//! Why three bits suffice (the odd-sticky lemma). Let `v` be the exact
+//! scaled value and `s` the integer held. Every inexact reduction in this
+//! crate (`Wide::shr_jam`, the `q |= 1` in div, the `root |= 1` in sqrt)
+//! leaves `s` odd with `v` strictly inside `(s - 1, s + 1)`. Note that `s`
+//! may exceed `v`: when `floor(v)` is even the jam yields `floor(v) + 1`.
+//! Correctness does not need `s <= v`; it needs that no rounding boundary
+//! separates `s` from `v`. The only integer in that open interval is `s`,
+//! which is odd, so the interval contains no multiple of 4 and no multiple
+//! of 8: `v` and `s` lie strictly between the same boundaries for rounding
+//! at bit 3 and strictly on the same side of the midpoint (bit 2), and
+//! neither is a tie. One normalizing left shift keeps this (2s is 2 mod 4,
+//! and `(2s - 2, 2s + 2)` still holds no multiple of 4); two would not.
+//! Every operation therefore guarantees that an inexact `sig` reaching
+//! `norm_round_pack` has its MSB at `PREC + 1` or above: add/sub because a
+//! gap of at least 4 (the only inexact case) bounds cancellation to one
+//! bit, mul/div/sqrt by their output bit counts. `norm_round_pack` asserts
+//! it in debug builds.
 //!
 //! Model: SoftFloat `s_roundPackToF32.c` / `s_normRoundPackToF32.c`.
 
@@ -65,6 +79,11 @@ pub fn norm_round_pack<F: Format>(sign: bool, e: i32, sig: F::W, r: Round) -> u1
     let want = F::W::BITS - 1 - (F::PREC + 2);
     if lz > want {
         let d = lz - want;
+        // An odd `sig` is an inexact (jammed) one; see the module comment.
+        debug_assert!(
+            d <= 1 || sig.and(F::W::ONE).is_zero(),
+            "inexact sig normalized by {d} bits"
+        );
         round_pack::<F>(sign, e - d as i32, sig.shl(d), r)
     } else if lz < want {
         let d = want - lz;

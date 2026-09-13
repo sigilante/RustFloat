@@ -38,7 +38,10 @@ pub fn add<F: Format>(a: u128, b: u128, r: Round) -> u128 {
     let siga = siga.shl(3);
     let sigb = sigb.shl(3);
     // Order so that `x` has the larger exponent; the smaller shifts right
-    // with a sticky bit. Exponent gaps of 0 or 1 lose nothing.
+    // with a sticky bit. Gaps of 0 to 3 only shift out the three zero
+    // guard bits, so they are exact; a gap of 4 or more leaves `sigy` at
+    // most 2^(PREC-1), so the difference keeps its MSB at PREC+1 or above
+    // and normalization shifts left by at most one bit (see pack.rs).
     let (sx, ex, sigx, sy, sigy) = if ea >= eb {
         (ua.sign, ea, siga, ub.sign, sigb.shr_jam((ea - eb) as u32))
     } else {
