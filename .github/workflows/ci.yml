@@ -1,0 +1,46 @@
+name: ci
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * *"   # nightly: exhaustive binary16 binary ops
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: SOFTFLOAT_ORACLE_N=200000 cargo test --release -p sdfloat --test oracle
+      - run: scripts/no-hardware-floats.sh
+
+  # The library must build with no std, no alloc, no dependencies.
+  no-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+      - run: cargo build -p sdfloat --target thumbv7em-none-eabihf
+
+  # All 2^32 binary16 operand pairs x 5 modes for add/sub/mul/div against
+  # the oracle. Nightly or on demand; too slow for every push.
+  exhaustive-f16:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --release -p sdfloat --test exhaustive_f16 -- --ignored --test-threads=4

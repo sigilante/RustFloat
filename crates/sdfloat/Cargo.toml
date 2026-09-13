@@ -1,0 +1,14 @@
+[package]
+name = "sdfloat"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Pure-Rust, no_std, allocation-free IEEE 754 binary16/32/64/128 arithmetic with explicit rounding modes, bit-identical to Berkeley SoftFloat 3e"
+keywords = ["ieee754", "softfloat", "no_std", "deterministic"]
+categories = ["mathematics", "no-std"]
+
+[dependencies]
+
+[dev-dependencies]
+sdfloat-oracle = { path = "../sdfloat-oracle" }

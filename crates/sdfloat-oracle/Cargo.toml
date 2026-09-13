@@ -1,0 +1,13 @@
+[package]
+name = "sdfloat-oracle"
+version = "0.1.0"
+edition.workspace = true
+license = "BSD-3-Clause"
+description = "Test-only FFI to Berkeley SoftFloat 3e (vendored C); the oracle the sdfloat crate is checked against. Never a runtime dependency."
+publish = false
+
+[lib]
+doctest = false
+
+[build-dependencies]
+cc = "1"
