@@ -32,9 +32,14 @@ fn main() {
         .define("SOFTFLOAT_FAST_DIV64TO32", None)
         .warnings(false)
         .opt_level(2); // SoftFloat's header-inline primitives need inlining
+
+    // Hoon overflow semantics: these replace the vendored files of the same
+    // name (see ../sdfloat-oracle/csrc/hoon-overflow/README.md).
+    let hoon = sf_platform.join("hoon-overflow");
     for dir in [sf.to_path_buf(), sf.join("ARM-VFPv2")] {
         for f in c_files(&dir) {
-            build.file(f);
+            let patched = hoon.join(f.file_name().unwrap());
+            build.file(if patched.exists() { patched } else { f });
         }
     }
     for level in ["level1", "level2", "level3"] {

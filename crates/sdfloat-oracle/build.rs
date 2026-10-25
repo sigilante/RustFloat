@@ -18,6 +18,8 @@ fn main() {
         // so the C must be optimized even in a debug Rust build.
         .opt_level(2)
         .file("csrc/shim.c");
+    // csrc/hoon-overflow replaces the vendored files of the same name.
+    let hoon = Path::new("csrc/hoon-overflow");
     for dir in [src.to_path_buf(), src.join("ARM-VFPv2")] {
         let mut files: Vec<_> = std::fs::read_dir(&dir)
             .unwrap()
@@ -26,7 +28,8 @@ fn main() {
             .collect();
         files.sort();
         for f in files {
-            build.file(f);
+            let patched = hoon.join(f.file_name().unwrap());
+            build.file(if patched.exists() { patched } else { f });
         }
     }
     build.compile("sdfloat_oracle");

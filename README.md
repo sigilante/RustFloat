@@ -2,7 +2,8 @@
 
 Pure-Rust IEEE 754 software floating point and BLAS with explicit rounding
 modes, bit-identical to Berkeley SoftFloat 3e and to
-[SoftBLAS](https://github.com/urbit/SoftBLAS). Built for NockApp jets of the
+[SoftBLAS](https://github.com/urbit/SoftBLAS) except on overflow, where it
+follows Hoon. Built for NockApp jets of the
 [urbit/numerics](https://github.com/urbit/numerics) suite, where a jet must
 return exactly the bits the Hoon `++rh`/`++rs`/`++rd`/`++rq` cores and
 `/lib/lagoon` return.
@@ -19,8 +20,8 @@ inexact operation. Specification: [`doc/nockapp-softfloat-rs-spec.md`](doc/nocka
 | `crates/sdfloat/` | Scalar library: `F16`, `F32`, `F64`, `F128`, the `SoftFloat` trait, `Round`. |
 | `crates/sdblas/` | BLAS Levels 1 to 3 over `sdfloat`, real and complex, all four widths; the SoftBLAS port. |
 | `crates/sdblas-cabi/` | The SoftBLAS C ABI over `sdblas` as a static library: a drop-in `libsoftblas.a`, and how SoftBLAS's own test suite runs against the Rust. |
-| `crates/sdfloat-oracle/` | Test-only FFI to vendored SoftFloat 3e C (ARM-VFPv2 specialization, as vere links). |
-| `crates/sdblas-oracle/` | Test-only FFI to vendored SoftBLAS C, plus its munit test suite. |
+| `crates/sdfloat-oracle/` | Test-only FFI to vendored SoftFloat 3e C (ARM-VFPv2 specialization, as vere links), with Hoon overflow (`csrc/hoon-overflow/`). |
+| `crates/sdblas-oracle/` | Test-only FFI to vendored SoftBLAS C, plus its munit test suite; links the same Hoon-overflow SoftFloat. |
 
 The oracle crates are dev-dependencies only; nothing ships with C. Inside
 `crates/sdfloat/src`, `pack.rs` is the single rounding point and each file in
@@ -36,8 +37,7 @@ let a = F32(0x3f80_0000);               // 1.0
 let b = F32(0x2edb_e6ff);               // 1e-10
 assert_eq!(a.add(b, Round::NearEven), a);
 assert_eq!(a.add(b, Round::Away), F32(0x3f80_0001));
-assert_eq!(F32::MAX.mul(F32(0x4000_0000), Round::Zero), F32::MAX); // saturates
-assert_eq!(F32::MAX.mul(F32(0x4000_0000), Round::Up), F32::INF);
+assert_eq!(F32::MAX.mul(F32(0x4000_0000), Round::Zero), F32::INF); // as Hoon ++fl
 ```
 
 BLAS routines are generic over the width and take the mode last, where
@@ -68,12 +68,11 @@ from_u64 is_nan is_inf is_zero abs neg`, plus width conversions
 - Any NaN result is the canonical NaN of its width (`0x7e00`, `0x7fc00000`,
   `0x7ff8…`, `0x7fff8…`), matching Hoon `++ff` and vere. Payloads never
   propagate; there is no signaling NaN.
-- Overflow saturates to the largest finite value in modes that do not round
-  toward the overflowing infinity (IEEE 754-2019 §7.4): `%z`, `%d` for a
-  positive result, `%u` for a negative one. Hoon `++fl` currently returns
-  infinity there; see urbit/urbit#7426. In the Hoon vectors below, these are
-  the only rows where this crate and un-jetted Hoon differ. Vere's SoftFloat
-  jets differ on the same inputs.
+- Overflow gives infinity in every mode, as Hoon `++fl` does. IEEE 754-2019
+  §7.4, SoftFloat, and therefore Vere's C jets give the largest finite value
+  instead under `%z`, `%d` for a positive result, and `%u` for a negative
+  one; see urbit/urbit#7426. The oracles compile SoftFloat with Hoon's rule
+  (`crates/sdfloat-oracle/csrc/hoon-overflow/`).
 - Float to int: NaN gives 0, out of range saturates. This is SoftFloat under
   the ARM-VFPv2 specialization. The jet layer bails on those inputs instead.
 - Signed zero follows IEEE §6.3: `x - x` is `+0` except under `Down`.
@@ -100,9 +99,9 @@ For `sdfloat`, three layers, all run by `cargo test --workspace`:
 2. **Hoon vectors** (`tests/hoon_vectors.rs`, `tests/vectors/hoon_f*.txt`):
    1500 rows per width from the un-jetted `++ff` core via `urbit eval`,
    covering add/sub/mul/div/sqt/lth/lte/equ/toi/sun/san in all five modes.
-   Regenerate with `URBIT=/path/to/urbit scripts/gen-hoon-vectors.py`. Rows
-   that hit the Hoon overflow bug are counted and must be exactly of that
-   shape; everything else must match bit for bit.
+   Regenerate with `URBIT=/path/to/urbit scripts/gen-hoon-vectors.py`.
+   Arithmetic must match bit for bit, overflow included; between 106 and 633
+   rows per width overflow where IEEE would saturate.
 3. **Hand-checked semantics** (`tests/semantics.rs`): the conventions above.
 
 For `sdblas`: a differential fuzz of every routine, width, stride pattern,

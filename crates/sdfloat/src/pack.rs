@@ -24,7 +24,7 @@
 //!
 //! Model: SoftFloat `s_roundPackToF32.c` / `s_normRoundPackToF32.c`.
 
-use crate::format::{inf_bits, max_bits, Format};
+use crate::format::{inf_bits, Format};
 use crate::round::Round;
 use crate::wide::Wide;
 
@@ -50,13 +50,11 @@ pub fn round_pack<F: Format>(sign: bool, e: i32, sig: F::W, r: Round) -> u128 {
     };
     let bumped = sig.wrapping_add(inc);
     if e > F::EMAX || (e == F::EMAX && bumped >= top) {
-        // Overflow: infinity if this mode rounds toward it, else the
-        // largest finite value (IEEE 754-2019 7.4).
-        return if inc.is_zero() {
-            max_bits::<F>(sign)
-        } else {
-            inf_bits::<F>(sign)
-        };
+        // Overflow is infinity in every mode, as in Hoon `++fl` (`lug`
+        // returns `[%i &]` once the rounded exponent passes `emx`). IEEE
+        // 754-2019 7.4 and SoftFloat give the largest finite value in modes
+        // that round toward zero; see urbit/urbit#7426.
+        return inf_bits::<F>(sign);
     }
     let mut s = bumped.shr(3);
     if r == Round::NearEven && round_bits == half {

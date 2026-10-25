@@ -16,9 +16,14 @@ LIB=$ROOT/target/release/libsdblas_cabi.a
 
 CC=${CC:-cc}
 SFFLAGS="-O2 -w -DSOFTFLOAT_FAST_INT64 -DSOFTFLOAT_ROUND_ODD -DINLINE_LEVEL=5 -DSOFTFLOAT_FAST_DIV32TO16 -DSOFTFLOAT_FAST_DIV64TO32 -DTHREAD_LOCAL=_Thread_local -I$ROOT/crates/sdfloat-oracle/csrc -I$SF/include -I$SF/ARM-VFPv2"
-if [ ! -f "$OUT/libsoftfloat.a" ]; then
+# csrc/hoon-overflow replaces the vendored files of the same name, giving
+# SoftFloat Hoon's overflow-to-infinity in every mode.
+HOON=$ROOT/crates/sdfloat-oracle/csrc/hoon-overflow
+if [ ! -f "$OUT/libsoftfloat.a" ] || [ -n "$(find "$HOON" -newer "$OUT/libsoftfloat.a")" ]; then
   for f in "$SF"/*.c "$SF"/ARM-VFPv2/*.c; do
-    $CC $SFFLAGS -c "$f" -o "$OUT/sf/$(basename "$f" .c).o"
+    b=$(basename "$f")
+    [ -f "$HOON/$b" ] && f=$HOON/$b
+    $CC $SFFLAGS -c "$f" -o "$OUT/sf/${b%.c}.o"
   done
   ar rcs "$OUT/libsoftfloat.a" "$OUT"/sf/*.o
 fi

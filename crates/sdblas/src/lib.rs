@@ -27,6 +27,9 @@
 //!   `beta == 0`, so a NaN or infinity already in the output propagates.
 //! * `Round::Away` is Hoon's directed away-from-zero. SoftBLAS's `'a'`
 //!   is SoftFloat's nearest-ties-away instead; the four other modes match.
+//! * Overflow gives infinity in every mode, as in Hoon `/lib/lagoon`;
+//!   SoftBLAS inherits SoftFloat's largest finite value under modes that
+//!   round toward zero. See [`sdfloat`].
 //!
 //! Matrices are dense slices with an explicit leading dimension. `gemm` is
 //! row-major with `A` being `M x N`, `B` being `N x P`, `C` being `M x P`;

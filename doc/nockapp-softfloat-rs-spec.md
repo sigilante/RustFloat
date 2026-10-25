@@ -273,9 +273,13 @@ above are left as written.
   is unreachable. The library implements `Round::Away` as directed.
 - **§4.5 / Hoon overflow.** Hoon `++fl` overflows to infinity in every
   mode (`lug` ends with a mode-independent max-exponent check). The
-  library follows IEEE 754 §7.4 and saturates in directed modes; the Hoon
-  is to be fixed (urbit/urbit#7426, urbit/numerics#82). The Hoon-vector
-  test counts rows of exactly that shape rather than skipping them.
+  library first followed IEEE 754 §7.4 and saturated in directed modes,
+  pending a Hoon fix (urbit/urbit#7426, urbit/numerics#82). Superseded
+  2026-10-25: where Hoon and Vere differ, the library follows Hoon, so
+  overflow is infinity in every mode. The oracles compile SoftFloat's four
+  `roundPack` functions with the same rule
+  (`crates/sdfloat-oracle/csrc/hoon-overflow/`), and the Hoon vectors must
+  match bit for bit.
 - **§4.6 float to int on NaN.** Decision: the library returns what
   SoftFloat returns under the specialization vere links, which is
   ARM-VFPv2 (`vere/ext/softfloat/build.zig`): NaN gives 0, positive
