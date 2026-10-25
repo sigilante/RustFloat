@@ -4,7 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Pure-Rust, no_std BLAS over sdfloat with explicit rounding modes, bit-identical to SoftBLAS except on overflow, which follows Hoon"
+description = "Pure-Rust, no_std BLAS over sdfloat with explicit rounding modes, bit-identical to SoftBLAS"
 keywords = ["blas", "ieee754", "no_std", "deterministic"]
 categories = ["mathematics", "no-std"]
 

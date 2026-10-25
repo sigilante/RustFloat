@@ -158,3 +158,7 @@ pub fn zero_bits<F: Format>(sign: bool) -> u128 {
         0
     }
 }
+#[inline]
+pub fn max_bits<F: Format>(sign: bool) -> u128 {
+    F::MAX_BITS | if sign { F::SIGN_MASK } else { 0 }
+}

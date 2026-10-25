@@ -2,12 +2,10 @@
 //! from the un-jetted `++ff` core through `urbit eval`. This is the only
 //! layer that can catch a SoftFloat-vs-Hoon divergence.
 //!
-//! Arithmetic must match bit for bit, overflow included: Hoon `++fl`
-//! overflows to infinity in every mode (urbit/urbit#7426) and so does this
-//! crate. Rows where IEEE would saturate instead are counted to show the
-//! vectors exercise that case.
-//!
 //! Known divergences, asserted rather than ignored:
+//! * Hoon `++fl` overflows to infinity in every mode (urbit/urbit#7426);
+//!   this crate saturates in directed modes per IEEE. Such rows are counted
+//!   and must be exactly of that shape.
 //! * Hoon has no float->float round-to-int; `toi` yields an integer and
 //!   `san` of it loses the sign of zero. `round_to_int` is compared modulo
 //!   the sign of a zero result.
@@ -47,30 +45,31 @@ fn hoon_int(s: &str) -> Option<(bool, u128)> {
     Some((neg, digits.parse().unwrap()))
 }
 
-/// Is `hoon` an infinity under a mode that does not round toward it? From
-/// finite operands, not dividing by zero, that is an overflow where IEEE
-/// would give MAX instead.
-fn is_inf_toward_zero<F: Format>(hoon: u128, r: Round) -> bool {
-    let sign = hoon & F::SIGN_MASK != 0;
-    let toward_zero = match r {
+/// Is `(ours, hoon)` the known Hoon overflow bug: Hoon inf where IEEE
+/// saturates to MAX under a mode that does not round toward that infinity?
+fn is_hoon_overflow<F: Format>(ours: u128, hoon: u128, r: Round) -> bool {
+    let sign = ours & F::SIGN_MASK != 0;
+    let ours_max = ours & F::ABS_MASK == F::MAX_BITS;
+    let hoon_inf = hoon & F::ABS_MASK == F::INF_BITS && (hoon & F::SIGN_MASK != 0) == sign;
+    let mode_saturates = match r {
         Round::Zero => true,
         Round::Down => !sign,
         Round::Up => sign,
         Round::NearEven | Round::Away => false,
     };
-    hoon & F::ABS_MASK == F::INF_BITS && toward_zero
+    ours_max && hoon_inf && mode_saturates
 }
 
 struct Stats {
     rows: usize,
-    inf_toward_zero: usize,
+    overflow_divergences: usize,
     toi_skipped: usize,
 }
 
 fn run<F: Format + SoftFloat + core::fmt::Debug>(text: &str, name: &str) -> Stats {
     let mut st = Stats {
         rows: 0,
-        inf_toward_zero: 0,
+        overflow_divergences: 0,
         toi_skipped: 0,
     };
     for line in text
@@ -84,22 +83,22 @@ fn run<F: Format + SoftFloat + core::fmt::Debug>(text: &str, name: &str) -> Stat
         let (x, y) = (F::from_raw(a), F::from_raw(b));
         st.rows += 1;
 
-        let arith = |st: &mut Stats, op: &str, finite: bool, ours: F, hoon: u128| {
+        let arith = |st: &mut Stats, op: &str, ours: F, hoon: u128| {
             let ours = ours.raw();
-            assert_eq!(
-                ours, hoon,
-                "{name} {op} {r:?} a={a:#x} b={b:#x} n={n:#x}: ours {ours:#x} hoon {hoon:#x}"
-            );
-            if finite && is_inf_toward_zero::<F>(hoon, r) {
-                st.inf_toward_zero += 1;
+            if ours == hoon {
+                return;
             }
+            if is_hoon_overflow::<F>(ours, hoon, r) {
+                st.overflow_divergences += 1;
+                return;
+            }
+            panic!("{name} {op} {r:?} a={a:#x} b={b:#x} n={n:#x}: ours {ours:#x} hoon {hoon:#x}");
         };
-        let fin = !x.is_inf() && !x.is_nan() && !y.is_inf() && !y.is_nan();
-        arith(&mut st, "add", fin, x.add(y, r), hex(f[4]));
-        arith(&mut st, "sub", fin, x.sub(y, r), hex(f[5]));
-        arith(&mut st, "mul", fin, x.mul(y, r), hex(f[6]));
-        arith(&mut st, "div", fin && !y.is_zero(), x.div(y, r), hex(f[7]));
-        arith(&mut st, "sqt", fin, x.sqrt(r), hex(f[8]));
+        arith(&mut st, "add", x.add(y, r), hex(f[4]));
+        arith(&mut st, "sub", x.sub(y, r), hex(f[5]));
+        arith(&mut st, "mul", x.mul(y, r), hex(f[6]));
+        arith(&mut st, "div", x.div(y, r), hex(f[7]));
+        arith(&mut st, "sqt", x.sqrt(r), hex(f[8]));
 
         assert_eq!(x.lt(y), f[9] == "1", "{name} lth a={a:#x} b={b:#x}");
         assert_eq!(x.le(y), f[10] == "1", "{name} lte a={a:#x} b={b:#x}");
@@ -160,15 +159,10 @@ fn run<F: Format + SoftFloat + core::fmt::Debug>(text: &str, name: &str) -> Stat
             }
         }
 
-        // Integer conversions can overflow too (f16 from a 63-bit integer).
-        arith(&mut st, "sun", true, F::from_u64(n as u64, r), hex(f[13]));
-        arith(
-            &mut st,
-            "san",
-            true,
-            F::from_i64(-(n as i64), r),
-            hex(f[14]),
-        );
+        // Integer conversions can also hit the Hoon overflow bug (f16 from
+        // a 63-bit integer), so they go through the same check.
+        arith(&mut st, "sun", F::from_u64(n as u64, r), hex(f[13]));
+        arith(&mut st, "san", F::from_i64(-(n as i64), r), hex(f[14]));
     }
     st
 }
@@ -179,10 +173,10 @@ macro_rules! vectors {
         fn $name() {
             let st = run::<$F>(include_str!($file), stringify!($F));
             eprintln!(
-                "{}: {} rows, {} infinities where IEEE saturates, {} toi rows skipped",
+                "{}: {} rows, {} Hoon overflow divergences (urbit/urbit#7426), {} toi rows skipped",
                 stringify!($F),
                 st.rows,
-                st.inf_toward_zero,
+                st.overflow_divergences,
                 st.toi_skipped
             );
             assert!(st.rows >= 1000, "vector file too small");

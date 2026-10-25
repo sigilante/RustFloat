@@ -11,9 +11,9 @@
 //!
 //! * **NaN**: any NaN operand yields the canonical NaN (`F::NAN`), payloads
 //!   are never propagated, and there is no signaling/quiet distinction.
-//! * **Overflow** gives infinity in every mode, as Hoon `++fl` does. IEEE
-//!   754-2019 7.4 and SoftFloat give the largest finite value instead under
-//!   `Zero`, `Down` for positive, and `Up` for negative (urbit/urbit#7426).
+//! * **Overflow** saturates to the largest finite value in modes that do not
+//!   round toward the overflowing infinity (`Zero`; `Down` for positive;
+//!   `Up` for negative), per IEEE 754-2019 7.4.
 //! * **Float to int** on NaN returns 0 and on out-of-range input saturates,
 //!   matching SoftFloat built with the ARM-VFPv2 specialization that vere
 //!   links. Exception flags do not exist in this crate.

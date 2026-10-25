@@ -51,25 +51,19 @@ fn signed_zero_rules() {
 }
 
 #[test]
-fn overflow_is_infinity_in_every_mode() {
-    // Hoon ++fl, not IEEE 754 (which gives MAX under Zero, Down for a
-    // positive result, Up for a negative one): urbit/urbit#7426.
+fn overflow_saturates_in_directed_modes() {
+    // The case Hoon ++fl gets wrong (urbit/urbit#7426): MAX * 2.
     let max = F32::MAX;
     let two = F32(0x4000_0000);
-    for r in MODES {
-        assert_eq!(max.mul(two, r), F32::INF, "{r:?}");
-        assert_eq!(max.neg().mul(two, r), F32::INF.neg(), "{r:?}");
-        assert_eq!(max.add(max, r), F32::INF, "{r:?}");
-        assert_eq!(F16::from_u64(u64::MAX, r), F16::INF, "{r:?}");
-        assert_eq!(F64::MAX.to_f32(r), F32::INF, "{r:?}");
-    }
-    // Below 2^(emax+1) nothing overflows: MAX plus half an ulp rounds to
-    // MAX unless the mode rounds away.
-    let half_ulp = F32(0x7300_0000); // 2^103 = ulp(MAX) / 2
-    assert_eq!(max.add(half_ulp, Round::Zero), max);
-    assert_eq!(max.add(half_ulp, Round::Down), max);
-    assert_eq!(max.add(half_ulp, Round::Up), F32::INF);
-    assert_eq!(max.neg().sub(half_ulp, Round::Up), max.neg());
+    assert_eq!(max.mul(two, Round::NearEven), F32::INF);
+    assert_eq!(max.mul(two, Round::Away), F32::INF);
+    assert_eq!(max.mul(two, Round::Up), F32::INF);
+    assert_eq!(max.mul(two, Round::Zero), max);
+    assert_eq!(max.mul(two, Round::Down), max);
+    assert_eq!(max.neg().mul(two, Round::Down), F32::INF.neg());
+    assert_eq!(max.neg().mul(two, Round::Up), max.neg());
+    assert_eq!(max.neg().mul(two, Round::Zero), max.neg());
+    assert_eq!(max.add(max, Round::Down), max);
 }
 
 #[test]
@@ -153,5 +147,5 @@ fn exact_widening_and_narrowing_examples() {
     );
     assert_eq!(F32(0x477f_e000).to_f16(Round::NearEven), F16(0x7bff)); // 65504
     assert_eq!(F32(0x4780_0000).to_f16(Round::NearEven), F16(0x7c00)); // 65536 -> inf
-    assert_eq!(F32(0x4780_0000).to_f16(Round::Zero), F16(0x7c00)); // Hoon: inf, IEEE: MAX
+    assert_eq!(F32(0x4780_0000).to_f16(Round::Zero), F16(0x7bff));
 }

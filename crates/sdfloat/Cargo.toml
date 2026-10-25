@@ -4,7 +4,7 @@ version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Pure-Rust, no_std, allocation-free IEEE 754 binary16/32/64/128 arithmetic with explicit rounding modes, bit-identical to Hoon ++fl and, overflow aside, Berkeley SoftFloat 3e"
+description = "Pure-Rust, no_std, allocation-free IEEE 754 binary16/32/64/128 arithmetic with explicit rounding modes, bit-identical to Berkeley SoftFloat 3e"
 keywords = ["ieee754", "softfloat", "no_std", "deterministic"]
 categories = ["mathematics", "no-std"]
 
