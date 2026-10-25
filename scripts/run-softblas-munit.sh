@@ -30,8 +30,9 @@ case "$(uname)" in
 esac
 # Tests are built at -O0 as SoftBLAS's Makefile does; at -O1 clang leaves a
 # compound-literal array in test_cdotu_rounding_modes uninitialized on the
-# first iteration (an issue in the test, not the library).
-$CC -O0 -w -DSOFTFLOAT_FAST_INT64 -DTHREAD_LOCAL=_Thread_local \
+# first iteration (an issue in the test, not the library). -std=gnu17 because
+# munit.c uses ATOMIC_VAR_INIT, which C23 removed and GCC 15 now rejects.
+$CC -O0 -std=gnu17 -w -DSOFTFLOAT_FAST_INT64 -DTHREAD_LOCAL=_Thread_local \
   -I"$V/SoftBLAS/include" -I"$V/SoftBLAS/tests/blas/include" -I"$V/munit" \
   -I"$ROOT/crates/sdfloat-oracle/csrc" -I"$SF/include" -I"$SF/ARM-VFPv2" \
   $TESTS "$V/munit/munit.c" "$LIB" "$OUT/libsoftfloat.a" $SYSLIBS -o "$OUT/test_all"

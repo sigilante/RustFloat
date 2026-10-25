@@ -69,8 +69,11 @@ from_u64 is_nan is_inf is_zero abs neg`, plus width conversions
   `0x7ff8…`, `0x7fff8…`), matching Hoon `++ff` and vere. Payloads never
   propagate; there is no signaling NaN.
 - Overflow saturates to the largest finite value in modes that do not round
-  toward the overflowing infinity (IEEE 754-2019 §7.4). Hoon `++fl` currently
-  returns infinity there; see urbit/urbit#7426.
+  toward the overflowing infinity (IEEE 754-2019 §7.4): `%z`, `%d` for a
+  positive result, `%u` for a negative one. Hoon `++fl` currently returns
+  infinity there; see urbit/urbit#7426. In the Hoon vectors below, these are
+  the only rows where this crate and un-jetted Hoon differ. Vere's SoftFloat
+  jets differ on the same inputs.
 - Float to int: NaN gives 0, out of range saturates. This is SoftFloat under
   the ARM-VFPv2 specialization. The jet layer bails on those inputs instead.
 - Signed zero follows IEEE §6.3: `x - x` is `+0` except under `Down`.
