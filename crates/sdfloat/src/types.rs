@@ -37,16 +37,36 @@ macro_rules! define_format {
 
 define_format!(
     /// IEEE 754 binary16 (Hoon `@rh`).
-    F16, u16, u32, 5, 10);
+    F16,
+    u16,
+    u32,
+    5,
+    10
+);
 define_format!(
     /// IEEE 754 binary32 (Hoon `@rs`).
-    F32, u32, u32, 8, 23);
+    F32,
+    u32,
+    u32,
+    8,
+    23
+);
 define_format!(
     /// IEEE 754 binary64 (Hoon `@rd`).
-    F64, u64, u64, 11, 52);
+    F64,
+    u64,
+    u64,
+    11,
+    52
+);
 define_format!(
     /// IEEE 754 binary128 (Hoon `@rq`).
-    F128, u128, u128, 15, 112);
+    F128,
+    u128,
+    u128,
+    15,
+    112
+);
 
 /// Convert between any two formats. Narrowing rounds per `r`; widening is
 /// exact and ignores `r`.
