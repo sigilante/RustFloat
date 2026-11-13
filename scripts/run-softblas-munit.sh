@@ -11,7 +11,7 @@ SF=$ROOT/crates/sdfloat-oracle/vendor/SoftFloat/source
 OUT=${OUT:-$ROOT/target/softblas-munit}
 mkdir -p "$OUT/sf"
 
-cargo build --release -p sdblas-cabi
+cargo build --locked --release -p sdblas-cabi
 LIB=$ROOT/target/release/libsdblas_cabi.a
 
 CC=${CC:-cc}
