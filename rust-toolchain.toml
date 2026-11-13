@@ -1,2 +1,7 @@
+# Pinned so a new Rust release cannot change rustfmt or clippy output under
+# CI. To bump: change `channel` here and every `dtolnay/rust-toolchain@`
+# ref in .github/workflows/ci.yml, then run the CI steps locally.
 [toolchain]
-channel = "stable"
+channel = "1.100.0"
+components = ["clippy", "rustfmt"]
+targets = ["thumbv7em-none-eabihf"]
